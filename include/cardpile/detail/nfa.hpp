@@ -44,13 +44,13 @@ struct set_of_char {
 };
 
 struct nfa {
-  // next[state][char] is the set of states reachable from state via that
-  // char transition.
-  std::vector<std::vector<std::vector<bool>>> next;
+  // next[state] is a char transition providing a set of chars and a
+  // destination state.
+  std::vector<std::pair<set_of_char, std::size_t>> next;
 
   // epsilon[state] is the set of states reachable from state via an
   // epsilon transition.
-  std::vector<std::vector<bool>> epsilon;
+  std::vector<std::vector<std::size_t>> epsilon;
 
   // final_[state] provides the token index for which this state is the
   // accepting state.
@@ -80,10 +80,10 @@ struct nfa {
     // This vector of vectors represents a map between DFA states and NFA
     // states. dfa_nfa_states[dfa_state] is a vector of NFA states
     // represented by that DFA state.
-    std::vector<std::vector<bool>> dfa_nfa_states;
+    std::vector<std::vector<std::size_t>> dfa_nfa_states;
 
     // The initial DFA state is the closure of the NFA start state.
-    std::vector<bool> state_closure(num_states);
+    std::vector<size_t> state_closure;
     closure(0, state_closure);
     dfa_nfa_states.push_back(state_closure);
     d.grow_num_states_to(1);
@@ -96,17 +96,16 @@ struct nfa {
       q.pop_back();
 
       for (std::size_t c = 0; c < 256; ++c) {
-        for (std::size_t j = 0; j < num_states; ++j)
-          state_closure[j] = false;
+        state_closure.clear();
 
         // For every NFA state in this DFA state, add to its closure the
         // closure of the transitioned-to states for the current character.
-        for (std::size_t j = 0; j < num_states; ++j)
-          if (dfa_nfa_states[i][j])
-            closure(next[j][c], state_closure);
+        for (std::size_t j : dfa_nfa_states[i])
+          if (next[j].first.get(c))
+            closure(next[j].second, state_closure);
 
         // If the closure set is empty, then skip (there is no transition).
-        if (std::ranges::find(state_closure, true) == state_closure.end())
+        if (state_closure.empty())
           continue;
 
         auto d_i = std::ranges::find(dfa_nfa_states, state_closure);
@@ -127,8 +126,8 @@ struct nfa {
       }
 
       // If one of the NFA states is a final state, then so is this DFA state.
-      for (std::size_t j = 0; j < num_states; ++j)
-        if (dfa_nfa_states[i][j] && final_[j]) {
+      for (std::size_t j : dfa_nfa_states[i])
+        if (final_[j]) {
           d.final_[i] = final_[j];
           // If there is more than one of these, that's probably user
           // error, but we'll give priority to the earlier tokens.
@@ -149,13 +148,11 @@ struct nfa {
 
     for (std::size_t i = 0; i < num_states; ++i) {
       for (std::size_t c = 0; c < 256; ++c)
-        for (std::size_t j = 0; j < num_states; ++j)
-          if (next[i][c][j])
-            os << i << " -> " << j << " [label=\"" << (char) c << "\"]\n";
+        if (next[i].first.get(c))
+          os << i << " -> " << next[i].second << " [label=\"" << (char) c << "\"]\n";
 
-      for (std::size_t j = 0; j < num_states; ++j)
-        if (epsilon[i][j])
-          os << i << " -> " << j << " [style=dotted]\n";
+      for (std::size_t j : epsilon[i])
+        os << i << " -> " << j << " [style=dotted]\n";
     }
 
     os << "}\n";
@@ -165,56 +162,57 @@ private:
   constexpr void grow_num_states_to(std::size_t count) {
     num_states = std::max(num_states, count);
     next.resize(num_states);
-    for (auto &v : next)
-      v.resize(256);
-    for (auto &v : next)
-      for (auto &w : v)
-        w.resize(num_states);
-
     epsilon.resize(num_states);
-    for (auto &v : epsilon)
-      v.resize(num_states);
-
     final_.resize(num_states);
   }
 
   constexpr void add_transition(std::size_t from,
                                 unsigned char on, std::size_t to) {
     grow_num_states_to(std::max(from, to) + 1);
-    next[from][on][to] = true;
+    auto &x = next[from];
+    x.first.set(on);
+    x.second = to;
+  }
+
+  constexpr void add_transition(std::size_t from,
+                                const set_of_char &on, std::size_t to) {
+    grow_num_states_to(std::max(from, to) + 1);
+    auto &x = next[from];
+    x.first = on;
+    x.second = to;
   }
 
   constexpr void add_epsilon_transition(std::size_t from, std::size_t to) {
     grow_num_states_to(std::max(from, to) + 1);
-    epsilon[from][to] = true;
+    epsilon[from].push_back(to);
   }
 
   // Compute the epsilon closure of a given set of start states.
-  constexpr void closure(std::vector<bool> start_states,
-                         std::vector<bool> &closure_states) const {
-    std::vector<std::size_t> q;
-    for (std::size_t i = 0; i < num_states; ++i)
-      if (start_states[i])
-        q.push_back(i);
-
+  constexpr void closure(std::vector<std::size_t> start_states,
+                         std::vector<std::size_t> &closure_states) const {
+    std::vector<std::size_t> q(start_states);
     while (!q.empty()) {
       std::size_t i = q.back();
       q.pop_back();
 
-      closure_states[i] = true;
+      // Insert the state into the set of states in the closure, keeping the
+      // vector sorted for efficient searching.
+      closure_states.insert(std::ranges::upper_bound(closure_states, i), i);
 
-      for (std::size_t j = 0; j < num_states; ++j)
-        if (epsilon[i][j] && !closure_states[j])
+      // Enqueue all states to which there is an epsilon transition (except
+      // those already in the closure).
+      for (std::size_t j : epsilon[i])
+        // Note: Not using std::ranges::binary_search here because of LLVM
+        // libc++ bug #61160.
+        if (!std::binary_search(closure_states.begin(), closure_states.end(), j))
           q.push_back(j);
     }
   }
 
   // Compute the epsilon closure of a given start state.
   constexpr void closure(std::size_t state_start,
-                         std::vector<bool> &closure_states) const {
-    std::vector<bool> start_states(num_states);
-    start_states[state_start] = true;
-
+                         std::vector<std::size_t> &closure_states) const {
+    std::vector<std::size_t> start_states(1, state_start);
     closure(start_states, closure_states);
   }
 
@@ -334,16 +332,17 @@ private:
 
       std::size_t state_start = num_states,
                   state_end   = num_states + 1;
-      for (std::size_t c = 0; c < 256; ++c) {
-        // As in POSIX lex, the '.' operator does not match a new line.
-        if (c == '\n' || c == '\r')
-          continue;
+      set_of_char char_class;
 
-        add_transition(state_start, c, state_end);
-      }
+      // As in POSIX lex, the '.' operator does not match a new line.
+      char_class.set('\n');
+      char_class.set('\r');
+      char_class.negate();
+
+      add_transition(state_start, char_class, state_end);
 
       return std::make_pair(state_start, state_end);
-    } 
+    }
 
     if (*regex_start == '[') {
       ++regex_start;
@@ -410,9 +409,7 @@ private:
 
       std::size_t state_start = num_states,
                   state_end   = num_states + 1;
-      for (std::size_t c = 0; c < 256; ++c)
-        if (char_class.get(c))
-          add_transition(state_start, c, state_end);
+      add_transition(state_start, char_class, state_end);
       return std::make_pair(state_start, state_end);
     }
 
