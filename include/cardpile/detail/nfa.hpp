@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <concepts>
+#include <cstdint>
 #include <iostream>
 #include <optional>
 #include <string_view>
@@ -23,6 +24,25 @@
 
 namespace cardpile {
 namespace detail {
+// A set of char values (which we're not calling a 'char set' because that term
+// has a separate locale-related meaning in this context).
+struct set_of_char {
+  constexpr bool get(unsigned char x) const {
+    return ((ints[x >> 6] >> (x & 0x3F)) & 1) != 0;
+  }
+
+  constexpr void set(unsigned char x) {
+    ints[x >> 6] |= std::uint64_t(1) << (x & 0x3F);
+  }
+
+  constexpr void negate() {
+    for (std::uint64_t &i : ints)
+      i = ~i;
+  }
+
+  std::array<std::uint64_t, 4> ints{};
+};
+
 struct nfa {
   // next[state][char] is the set of states reachable from state via that
   // char transition.
@@ -305,7 +325,6 @@ private:
 
     if (*regex_start == '(') {
       auto start_end_states = insert_regex(++regex_start, regex_end);
-
       ++regex_start; // Skip the closing ')'.
       return start_end_states;
     }
@@ -330,7 +349,7 @@ private:
       ++regex_start;
 
       bool is_neg = false;
-      std::array<bool, 256> char_class{false};
+      set_of_char char_class;
 
       if (*regex_start == '^') {
         ++regex_start;
@@ -342,7 +361,7 @@ private:
       // literal ']'. This is the convention used by POSIX regular
       // expressions. Same is true for a '-'.
       if (*regex_start == ']' || *regex_start == '-') {
-        char_class[*regex_start] = true;
+        char_class.set(*regex_start);
         last_char = *regex_start;
         ++regex_start;
       }
@@ -351,7 +370,7 @@ private:
       for (; *regex_start != ']'; ++regex_start) {
         if (after_dash) {
           if (*regex_start != '-')
-            char_class[*regex_start] = true;
+            char_class.set(*regex_start);
 
           unsigned char this_char = *regex_start;
           unsigned char range_start = std::min(last_char, this_char),
@@ -361,7 +380,7 @@ private:
           // This loop does not include the end points because they're
           // already marked (or, the case of a '-', will be later).
           for (std::size_t i = 1; i < range_size; ++i)
-            char_class[range_start + i] = true;
+            char_class.set(range_start + i);
 
           after_dash = *regex_start == '-';
           continue;
@@ -372,14 +391,14 @@ private:
           continue;
         }
 
-        char_class[*regex_start] = true;
+        char_class.set(*regex_start);
         last_char = *regex_start;
       }
 
       if (after_dash) {
         // The last character in the range was a '-', so add it to the set
         // as a literal.
-        char_class['-'] = true;
+        char_class.set('-');
       }
 
       // Skip the closing ']'.
@@ -387,13 +406,12 @@ private:
 
       // For a negated class, flip all of the bits.
       if (is_neg)
-        for (bool &b : char_class)
-          b = !b;
+        char_class.negate();
 
       std::size_t state_start = num_states,
                   state_end   = num_states + 1;
       for (std::size_t c = 0; c < 256; ++c)
-        if (char_class[c])
+        if (char_class.get(c))
           add_transition(state_start, c, state_end);
       return std::make_pair(state_start, state_end);
     }
