@@ -17,7 +17,6 @@
 #include <type_traits>
 #include <vector>
 #include <utility>
-#include <ranges>
 
 #include <cardpile/detail/utility.hpp>
 #include <cardpile/detail/dfa.hpp>
@@ -108,7 +107,8 @@ struct nfa {
         if (state_closure.empty())
           continue;
 
-        auto d_i = std::ranges::find(dfa_nfa_states, state_closure);
+        auto d_i = std::find(dfa_nfa_states.begin(), dfa_nfa_states.end(),
+                             state_closure);
         if (d_i != dfa_nfa_states.end()) {
           // This is one of the existing DFA states, so record the transition.
           std::size_t j = d_i - dfa_nfa_states.begin();
@@ -190,6 +190,28 @@ private:
   // Compute the epsilon closure of a given set of start states.
   constexpr void closure(std::vector<std::size_t> start_states,
                          std::vector<std::size_t> &closure_states) const {
+#if defined(__clang__) && defined(_LIBCPP_VERSION)
+    // To work around LLVM bug 63761 we cannot use vector::insert to keep a
+    // sorted container.
+    std::vector<std::size_t> q(start_states);
+    while (!q.empty()) {
+      std::size_t i = q.back();
+      q.pop_back();
+
+      closure_states.push_back(i);
+
+      // Enqueue all states to which there is an epsilon transition (except
+      // those already in the closure).
+      for (std::size_t j : epsilon[i])
+        if (std::find(closure_states.begin(),
+            closure_states.end(), j) == closure_states.end())
+          q.push_back(j);
+    }
+
+    // To ensure that the closure can be identified uniquely, sort before
+    // returning (this is needed because of the work around).
+    std::sort(closure_states.begin(), closure_states.end());
+#else
     std::vector<std::size_t> q(start_states);
     while (!q.empty()) {
       std::size_t i = q.back();
@@ -197,16 +219,16 @@ private:
 
       // Insert the state into the set of states in the closure, keeping the
       // vector sorted for efficient searching.
-      closure_states.insert(std::ranges::upper_bound(closure_states, i), i);
+      closure_states.insert(std::upper_bound(closure_states.begin(),
+                                             closure_states.end(), i), i);
 
       // Enqueue all states to which there is an epsilon transition (except
       // those already in the closure).
       for (std::size_t j : epsilon[i])
-        // Note: Not using std::ranges::binary_search here because of LLVM
-        // libc++ bug #61160.
         if (!std::binary_search(closure_states.begin(), closure_states.end(), j))
           q.push_back(j);
     }
+#endif
   }
 
   // Compute the epsilon closure of a given start state.
