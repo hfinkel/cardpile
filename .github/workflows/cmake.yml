@@ -16,15 +16,17 @@ jobs:
       matrix:
         compiler: ["g", "clang"]
         gversion: [13]
+        cversion: [0, 15, 16]
         libcxx: ["OFF", "ON"]
         exclude:
-          - compiler: "g"
-            libcxx: "ON"
-        include:
+          - cversion: 0
+            compiler: "clang"
+          - libcxx: "ON"
+            compiler: "g"
           - cversion: 15
-            compiler: "clang"
+            compiler: "g"
           - cversion: 16
-            compiler: "clang"
+            compiler: "g"
 
     steps:
     - uses: actions/checkout@v3
