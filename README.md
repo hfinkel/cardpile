@@ -57,6 +57,15 @@ int main() {
 
 ```
 
+## Compiler and Standard-Library Bugs
+
+The development of this library has resulted in the following compiler and standard-library bug reports:
+
+| Project | Bug | Mitigation |
+| --- | --- | --- |
+| GCC | [Bug 110542](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=110542) | Refactored to avoid bug |
+| LLVM | [Bug 63761](https://github.com/llvm/llvm-project/issues/63761) | Workaround in code (conditional compilation) |
+
 ## Maturity and Stability
 
 This library is in an "I just got something working" state. No interface or functional stability should be presumed at this point in time. There are no official releases.
