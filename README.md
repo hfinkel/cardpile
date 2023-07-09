@@ -6,7 +6,7 @@ CardPile is a header-only modern C++ library that makes heavy use of constexpr (
 
 ## Repository Status
 
-[![CMake CI Tests](https://github.com/hfinkel/cardpile/actions/workflows/cmake.yml/badge.svg)](https://github.com/hfinkel/cardpile/actions/workflows/cmake.yml)
+[![CMake CI Tests](https://github.com/hfinkel/cardpile/actions/workflows/cmake.yml/badge.svg)](https://github.com/hfinkel/cardpile/actions/workflows/cmake.yml) ![GitHub](https://img.shields.io/github/license/hfinkel/cardpile)
 
 ## Lexical Analysis
 
