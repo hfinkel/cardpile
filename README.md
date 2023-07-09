@@ -4,6 +4,10 @@
 
 CardPile is a header-only modern C++ library that makes heavy use of constexpr (compile-time) metaprogramming to produce highly-optimized code for lexical analysis and other tasks. CardPile requires C++20.
 
+## Repository Status
+
+[![CMake CI Tests](https://github.com/hfinkel/cardpile/actions/workflows/cmake.yml/badge.svg)](https://github.com/hfinkel/cardpile/actions/workflows/cmake.yml)
+
 ## Lexical Analysis
 
 CardPile contains a "scanner" (a lexical analyzer) which is based on the traditional compilation of regular expressions to an NFA (Nondeterministic Finite Automaton) to a DFA (Deterministic Finite Automaton). In short, it works similarly to POSIX lex except that the compilation process is entirely contained within the library metaprogram.
