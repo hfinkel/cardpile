@@ -44,6 +44,8 @@ jobs:
         sudo add-apt-repository -y "deb http://apt.llvm.org/$(lsb_release -s -c)/ llvm-toolchain-$(lsb_release -s -c)-${{ matrix.cversion }} main"
         sudo apt-get -q update
         sudo apt-get install clang-${{ matrix.cversion }} libc++-${{ matrix.cversion }}-dev libc++abi-${{ matrix.cversion }}-dev
+        sudo update-alternatives --remove-all clang
+        sudo update-alternatives --remove-all clang++
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{ matrix.cversion }} ${{ matrix.cversion }}0 --slave /usr/bin/clang++ clang++ /usr/bin/clang++-${{ matrix.cversion }}
         clang++ -v
 
