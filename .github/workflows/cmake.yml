@@ -15,14 +15,16 @@ jobs:
     strategy:
       matrix:
         compiler: ["g", "clang"]
-        gversion: [12, 13]
+        gversion: [0, 12, 13]
         cversion: [0, 15, 16]
         libcxx: ["OFF", "ON"]
         exclude:
-          - cversion: 0
-            compiler: "clang"
           - libcxx: "ON"
             compiler: "g"
+          - gversion: 0
+            libcxx: "OFF"
+          - cversion: 0
+            compiler: "clang"
           - cversion: 15
             compiler: "g"
           - cversion: 16
@@ -33,9 +35,16 @@ jobs:
 
     - name: Install Packages
       run: |
+        sudo apt-get -q update
+        sudo apt-get install cmake
+        cmake --version
+
+    - name: Install GCC Packages
+      if: ${{ matrix.libcxx == 'OFF' }}
+      run: |
         sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
         sudo apt-get -q update
-        sudo apt-get install cmake gcc-${{ matrix.gversion }} g++-${{ matrix.gversion }}
+        sudo apt-get install gcc-${{ matrix.gversion }} g++-${{ matrix.gversion }}
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ matrix.gversion }} ${{ matrix.gversion }}0 --slave /usr/bin/g++ g++ /usr/bin/g++-${{ matrix.gversion }} --slave /usr/bin/gcov gcov /usr/bin/gcov-${{ matrix.gversion }}
         g++ -v
 
