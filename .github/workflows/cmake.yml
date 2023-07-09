@@ -35,6 +35,8 @@ jobs:
             compiler: "g"
           - cversion: 16
             compiler: "g"
+          - cversion: 14
+            libcxx: "ON"
 
     steps:
     - uses: actions/checkout@v3
