@@ -144,7 +144,7 @@ private:
   struct inner_t {
     template <state_t s, typename F, typename CIt>
     struct spec {
-      static bool try_accept(F &&f, Ctx &ctx) {
+      static inline bool try_accept(F &&f, Ctx &ctx) {
         if constexpr (fd.final_[s].first) {
           using token_t = detail::nth_pack_element<fd.final_[s].second, Ts...>;
 
@@ -161,7 +161,7 @@ private:
       }
 
       template <unsigned char c>
-      static bool constexpr process_one(F &&f, state_t &next_state, Ctx &ctx) {
+      static inline bool constexpr process_one(F &&f, state_t &next_state, Ctx &ctx) {
         if constexpr (!fd.next[s][c].first) { // There is no valid transition.
           if (try_accept(std::forward<F>(f), ctx)) {
             if (fd.next[0][c].first) {
@@ -183,7 +183,7 @@ private:
       }
 
       template <std::size_t... cs>
-      static bool constexpr process_one_dispatch(F &&f, CIt c, state_t &next_state, Ctx &ctx,
+      static inline bool constexpr process_one_dispatch(F &&f, CIt c, state_t &next_state, Ctx &ctx,
                                                  std::integer_sequence<std::size_t, cs...>) {
         bool ret;
         constexpr unsigned char z{0};
@@ -193,12 +193,12 @@ private:
         return ret;
       }
 
-      static bool constexpr process_one(F &&f, CIt c, state_t &next_state, Ctx &ctx) {
+      static inline bool constexpr process_one(F &&f, CIt c, state_t &next_state, Ctx &ctx) {
         return process_one_dispatch(std::forward<F>(f), c, next_state, ctx,
                  std::make_integer_sequence<std::size_t, 256>{});
       }
 
-      static bool constexpr finish(F &&f, Ctx &ctx) {
+      static inline bool constexpr finish(F &&f, Ctx &ctx) {
         // This is an accepting state, so we can generate a final token.
         return try_accept(std::forward<F>(f), ctx);
       }
@@ -207,7 +207,7 @@ private:
     // Dispatch to the correct specialization, using a technique from
     // https://www.reddit.com/r/cpp/comments/6vyqra/variadic_switch_case/
     template <typename F, typename CIt, state_t... Is>
-    bool constexpr process_one_dispatch(F &&f, CIt c, Ctx &ctx, std::integer_sequence<state_t, Is...>) {
+    inline bool constexpr process_one_dispatch(F &&f, CIt c, Ctx &ctx, std::integer_sequence<state_t, Is...>) {
       bool ret;
       state_t next_state;
 
@@ -220,7 +220,7 @@ private:
     }
 
     template <typename F, typename CIt>
-    bool constexpr process_one(F &&f, CIt c, Ctx &ctx) {
+    inline bool constexpr process_one(F &&f, CIt c, Ctx &ctx) {
       bool ret = process_one_dispatch(std::forward<F>(f), c, ctx,
                    std::make_integer_sequence<state_t, number_of_states>{});
 
@@ -228,7 +228,7 @@ private:
     }
 
     template <typename F, state_t... Is>
-    bool constexpr finish_dispatch(F &&f, Ctx &ctx, std::integer_sequence<state_t, Is...>) {
+    inline bool constexpr finish_dispatch(F &&f, Ctx &ctx, std::integer_sequence<state_t, Is...>) {
       bool ret;
 
       std::initializer_list<state_t> ({(state == Is ?
@@ -240,7 +240,7 @@ private:
     }
 
     template <typename F>
-    bool constexpr finish(F &&f, Ctx &ctx) {
+    inline bool constexpr finish(F &&f, Ctx &ctx) {
       bool ret = finish_dispatch(std::forward<F>(f), ctx,
                std::make_integer_sequence<state_t, number_of_states>{});
       return ctx.finish() && ret;
@@ -268,14 +268,14 @@ public:
   // Signal that the input is complete, any final token should be processed,
   // and the state should be reset.
   template <typename F>
-  bool constexpr finish(F &&f) {
+  inline bool constexpr finish(F &&f) {
     return inner.finish(std::forward<F>(f), ctx);
   }
 
   // A process all inputs given the starting and ending iterators.
   template <typename F, std::forward_iterator I, std::sentinel_for<I> S = I>
   requires context_input<Ctx, I>
-  bool constexpr process(F &&f, const I first, const S last, bool partial = false) {
+  inline bool constexpr process(F &&f, const I first, const S last, bool partial = false) {
     for (auto i = first; i != last; ++i)
       if (!inner.process_one(std::forward<F>(f), i, ctx))
         return false;
@@ -288,7 +288,7 @@ public:
 
   // Process all of the characters within a provided range.
   template <typename F, std::ranges::forward_range R>
-  bool constexpr process(F &&f, R r, bool partial = false) {
+  inline bool constexpr process(F &&f, R r, bool partial = false) {
     return process(std::forward<F>(f), std::ranges::begin(r), std::ranges::end(r), partial);
   }
 
