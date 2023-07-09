@@ -59,7 +59,7 @@ int main() {
 
 ## Maturity and Stability
 
-This library is in a "I just got something working" state. No interface or functional stability should be presumed at this point in time. There are no official releases.
+This library is in an "I just got something working" state. No interface or functional stability should be presumed at this point in time. There are no official releases.
 
 ## Support
 
