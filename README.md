@@ -57,6 +57,15 @@ int main() {
 
 ```
 
+## CMake Variables
+
+In addition to the standard CMake variable, the following CMake variables can be used to configure the library:
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `CARDPILE_USE_LIBCXX` | BOOL | OFF | When ON, use select -stdlib=libc++ when compiling and linking. |
+| `CARDPILE_SET_COMPILER_RPATH` | BOOL | OFF | When ON, add to the build-time linking RPATH all non-system-default C++ compiler linking directories. This is useful when using a compiler that is not installed in the default system location (and the RPATH is set at build time so that unit tests can run from the build directory). |
+
 ## Compiler and Standard-Library Bugs
 
 The development of this library has resulted in the following compiler and standard-library bug reports:
