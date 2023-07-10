@@ -23,7 +23,7 @@ using ws      = cardpile::token<"[ \t\r\n]+", "ws">;
 
 // A token with more functionality (in this case, an unsigned integer).
 struct integer : public cardpile::token<"[1-9][0-9]*", "integer"> {
-  integer(context &ctx) : text(ctx.get_start(), ctx.get_end()) { }
+  integer(context &ctx) : text(ctx.begin(), ctx.end()) { }
   std::string_view text;
 
   bool get_value(unsigned long &value) const {

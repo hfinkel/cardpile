@@ -81,19 +81,15 @@ struct simple_context {
     return true;
   }
 
-  constexpr I get_start() const {
+  constexpr I begin() const {
     return start;
   }
 
-  constexpr I get_current() const {
-    return current;
-  }
-
-  constexpr I get_end() const {
+  constexpr I end() const {
     return std::next(current);
   }
 
-  constexpr bool is_valid() const {
+  constexpr bool valid() const {
     return !just_reset;
   }
 

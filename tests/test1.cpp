@@ -17,7 +17,7 @@ using context = cardpile::simple_context<std::string::iterator>;
 using true_   = cardpile::kw<"true">;
 using ws      = cardpile::token<"[ \t\r\n]+", "ws">;
 struct integer : public cardpile::token<"[1-9][0-9]*", "integer"> {
-  integer(context &ctx) : text(ctx.get_start(), ctx.get_end()) { }
+  integer(context &ctx) : text(ctx.begin(), ctx.end()) { }
   std::string_view text;
 
   bool get_value(unsigned long &value) const {
